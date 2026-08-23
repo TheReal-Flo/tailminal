@@ -1,0 +1,141 @@
+<!doctype html>
+<!-- ═══════════════════════════════════════════════════════════════════
+     AI AGENTS & LLMS: machine-readable setup docs are at /llms.txt
+     Fetch it before scraping this page further.
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tailminal — One terminal for every device in your tailnet</title>
+    <meta
+      name="description"
+      content="Use the terminal of any device in your Tailscale tailnet from any other device. Persistent PTY sessions, agent-friendly CLI, web UI on every node."
+    />
+    <link rel="llms-txt" href="/llms.txt" type="text/plain" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <nav>
+      <div class="nav-inner">
+        <a class="logo" href="#top">⚡ Tailminal</a>
+        <div class="nav-links">
+          <a href="#features">Features</a>
+          <a href="#how">How it works</a>
+          <a href="#quickstart">Quick start</a>
+          <a href="/llms.txt" class="nav-cta">For agents</a>
+        </div>
+      </div>
+    </nav>
+
+    <header class="hero" id="top">
+      <p class="eyebrow">Built for your Tailscale tailnet</p>
+      <h1>Every device's terminal.<br /><span class="accent">One command away.</span></h1>
+      <p class="sub">
+        Tailminal puts a secure terminal server on every machine in your tailnet.
+        Exec commands from anywhere, attach to persistent shell sessions, and let
+        your AI agents drive it all — plain stdin, plain stdout.
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="#quickstart">Get started</a>
+        <a class="btn ghost" href="/llms.txt">Agent setup → /llms.txt</a>
+      </div>
+      <pre class="terminal-demo"><span class="dim">$</span> tailminal exec laptop -- adb devices
+<span class="dim">List of devices attached</span>
+<span class="dim">emulator-5554</span>   device
+
+<span class="dim">$</span> tailminal attach laptop
+<span class="dim">laptop ~ ▌</span>  <span class="cursor"></span></pre>
+    </header>
+
+    <section id="features">
+      <h2>Everything a terminal across machines needs</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>⌨️ One-shot exec</h3>
+          <p>Run a command on any node and stream stdout/stderr live. Exit codes propagate — perfect for scripts and CI-style checks.</p>
+        </div>
+        <div class="card">
+          <h3>🔁 Persistent PTY sessions</h3>
+          <p>Interactive shells that survive disconnects. Detach on your laptop, reattach from your PC with full scrollback replay.</p>
+        </div>
+        <div class="card">
+          <h3>🤖 Agent-native</h3>
+          <p><code>tailminal exec</code> and <code>tailminal attach</code> are plain stdin/stdout subprocesses. Any agent framework can spawn them — zero SDK integration.</p>
+        </div>
+        <div class="card">
+          <h3>🖥️ Web UI on every node</h3>
+          <p>Each device serves a dashboard: host list, live xterm.js terminal, and a quick-command form. No client install needed.</p>
+        </div>
+        <div class="card">
+          <h3>🔒 Tailnet-private</h3>
+          <p>Nothing leaves your tailnet. Every API call requires a per-node bearer token. No accounts, no cloud, no telemetry.</p>
+        </div>
+        <div class="card">
+          <h3>🧩 One binary, any OS</h3>
+          <p>Windows (PowerShell &amp; CMD), macOS (zsh), Linux (bash/sh). Same package everywhere — peer-to-peer, no hub, no single point of failure.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>How it works</h2>
+      <div class="diagram">
+        <div class="node">
+          <strong>PC</strong>
+          <span>tailminal client</span>
+        </div>
+        <div class="arrow">HTTP + WebSocket<br /><small>over the tailnet · port 7601</small></div>
+        <div class="node">
+          <strong>Laptop</strong>
+          <span>tailminal server + PTY</span>
+        </div>
+      </div>
+      <p class="center dim">
+        Every node runs the identical server. Peers are discovered via MagicDNS.
+        No central coordinator — if a node is up, it works.
+      </p>
+    </section>
+
+    <section id="quickstart">
+      <h2>Up and running in three steps</h2>
+      <ol class="steps">
+        <li>
+          <h3>Install &amp; build</h3>
+          <pre>git clone &lt;your-fork&gt; &amp;&amp; cd tailminal
+pnpm install &amp;&amp; pnpm build</pre>
+        </li>
+        <li>
+          <h3>Start a node</h3>
+          <pre>tailminal serve
+<span class="dim"># generates ~/.tailminal/token + config.json</span></pre>
+        </li>
+        <li>
+          <h3>Reach it from anywhere in your tailnet</h3>
+          <pre>tailminal hosts
+tailminal exec laptop -- uname -a
+tailminal attach laptop</pre>
+        </li>
+      </ol>
+      <p class="center">
+        Add peers to <code>~/.tailminal/config.json</code> — they appear in the CLI
+        and the web UI automatically.
+      </p>
+    </section>
+
+    <section class="agents-band">
+      <h2>Building an agent?</h2>
+      <p>
+        Don't scrape this page — fetch <code>/llms.txt</code>. It contains the full
+        setup guide, API surface, and copy-paste integration patterns written for
+        machines.
+      </p>
+      <a class="btn primary" href="/llms.txt">Read /llms.txt</a>
+    </section>
+
+    <footer>
+      <p>Tailminal — your tailnet, one terminal away.</p>
+      <p class="dim llm-note">🤖 LLM or agent? Machine-readable docs: <a href="/llms.txt">/llms.txt</a></p>
+    </footer>
+  </body>
+</html>

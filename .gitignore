@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.tsbuildinfo
+packages/server/static/bundle.js
+packages/server/static/bundle.css

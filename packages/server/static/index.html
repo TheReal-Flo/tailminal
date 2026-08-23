@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tailminal</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/bundle.css" />
+  </head>
+  <body>
+    <div id="app">
+      <aside id="sidebar">
+        <h1>⚡ Tailminal</h1>
+        <div id="token-row">
+          <input
+            id="token-input"
+            type="password"
+            placeholder="node token (~/.tailminal/token)"
+            autocomplete="off"
+          />
+        </div>
+        <ul id="host-list"></ul>
+        <form id="exec-form">
+          <input id="exec-input" type="text" placeholder="one-shot command…" autocomplete="off" />
+          <button type="submit">Run</button>
+        </form>
+        <pre id="exec-output" hidden></pre>
+      </aside>
+      <main id="terminal-pane">
+        <div id="terminal-bar">
+          <span id="active-host-label">no host selected</span>
+          <span class="spacer"></span>
+          <button id="detach-btn" hidden>Detach (keep session)</button>
+          <button id="kill-btn" hidden>Kill session</button>
+        </div>
+        <div id="terminal-container"></div>
+      </main>
+    </div>
+    <script src="/bundle.js"></script>
+  </body>
+</html>

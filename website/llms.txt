@@ -1,0 +1,193 @@
+# Tailminal
+
+> Use the terminal of any device in your Tailscale tailnet from any other device. Every node runs an identical server (HTTP + WebSocket on port 7601) exposing one-shot command execution and persistent PTY sessions. Clients are a CLI (`tailminal`), a web UI, and a plain HTTP/WS API — all secured by a per-node bearer token inside the private tailnet.
+
+This file is written for AI agents and LLMs. It contains everything needed to install, configure, operate, and integrate with Tailminal without reading the human marketing page.
+
+## What Tailminal is
+
+- **Peer-to-peer terminal mesh for a Tailscale tailnet.** No central hub. Each device runs the same single server binary.
+- **Two interaction modes:**
+  - **One-shot exec** — run a command, stream stdout/stderr, receive the exit code.
+  - **Persistent PTY sessions** — interactive shells (node-pty) that survive client disconnects and can be reattached with scrollback replay. Sessions are persistent until node reboot by default (configurable TTL).
+- **Three clients:**
+  - CLI: `tailminal` (subprocess-friendly: plain stdin/stdout — ideal for agents)
+  - Web UI served by every node at `http://<node>:7601/`
+  - Raw HTTP + WebSocket API (documented below)
+- **Platforms:** Windows (PowerShell default, CMD optional), macOS (zsh), Linux (bash/sh). TypeScript, Node.js >= 20, pnpm workspace.
+
+## Requirements
+
+- Node.js >= 20 and pnpm (native build toolchain needed once for `node-pty`; on Windows this uses bundled ConPTY, no VS build tools required for the prebuilt path)
+- A Tailscale tailnet with MagicDNS enabled (recommended) — any DNS name or IP works
+
+## Install
+
+```bash
+git clone <repository-url> tailminal
+cd tailminal
+pnpm install
+pnpm build
+```
+
+The CLI entry point is `apps/cli/dist/index.js` (shebang included). Symlink or install it globally if desired.
+
+## Setup (per node)
+
+1. Start the server once to bootstrap config:
+
+   ```bash
+   tailminal serve
+   ```
+
+   First run creates:
+
+   - `~/.tailminal/token` — random 48-hex-char bearer token (mode 0600). This is the node's credential.
+   - `~/.tailminal/config.json` — defaults below.
+
+2. Edit `~/.tailminal/config.json`:
+
+   ```json
+   {
+     "port": 7601,
+     "sessionTTL": "persistent",
+     "peers": [
+       { "name": "laptop", "address": "laptop.your-tailnet.ts.net" }
+     ]
+   }
+   ```
+
+   - `port`: fixed listen port (default 7601). All nodes should use the same port.
+   - `sessionTTL`: `"persistent"` (default — sessions live until process exit/reboot) or a duration like `"30m"`, `"12h"`, `"7d"` after which detached idle sessions are reaped.
+   - `shell`: optional absolute path overriding the PTY login shell on this node.
+   - `peers`: MagicDNS names or IPs of other nodes, shown by `tailminal hosts` and in the web UI.
+
+3. Keep the server running (systemd user service, launchd, or Task Scheduler — see the README in the repo root).
+
+4. To let device A control device B, copy B's token to A (e.g. `~/.tailminal/token` there too, or export `TAILMINAL_TOKEN`). In a trusted tailnet, using one shared token across your own devices is the simple model.
+
+Environment overrides: `TAILMINAL_HOME` (config dir, default `~/.tailminal`), `TAILMINAL_TOKEN` (token for outbound client calls).
+
+## Verify installation
+
+```bash
+tailminal hosts                      # lists peers with online/offline status
+curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.1.0"} (no auth needed)
+tailminal exec laptop -- uname -a    # or: ver / systeminfo on Windows
+```
+
+## CLI reference
+
+```
+tailminal serve                          Start the node server on 0.0.0.0:<port>
+tailminal hosts                          List configured peers + reachability
+tailminal exec <host> [opts] -- <cmd...> One-shot command; streams output; exits with remote exit code
+    --cwd <dir>                          Remote working directory
+    --shell <auto|powershell|cmd|sh>     Shell preference (powershell/cmd are Windows-only)
+    --timeout-ms <n>                     Kill the command after n milliseconds
+tailminal attach <host> [session-id]     Interactive PTY over local stdin/stdout
+                                         Ctrl+] = detach locally, session stays alive remotely
+tailminal sessions <host>                List sessions on <host>
+tailminal token                          Print the local node token
+```
+
+`<host>` accepts a MagicDNS name, an IP, a peer name from config, or a full URL (`http://host:7601`).
+
+## HTTP API
+
+Base URL: `http://<node>:7601`. All `/api` routes except `/api/health` require `Authorization: Bearer <token>`.
+
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| `/api/health` | GET | Liveness probe. No auth. Returns `{ok, version}`. |
+| `/api/hosts` | GET | `{self: HostInfo, peers: [{name, address}]}` |
+| `/api/exec` | POST | One-shot command. Body: `{"cmd": string, "cwd"?: string, "env"?: object, "shell"?: "auto"\|"powershell"\|"cmd"\|"sh", "timeoutMs"?: number}`. Response is NDJSON stream: zero or more `{"stream":"stdout"\|"stderr","data":string}` chunks, then a final `{"exitCode":number\|null,"durationMs":number}`. |
+| `/api/sessions` | GET | `{sessions: [{id, shell, cols, rows, attached, createdAt, lastActivityAt}]}` |
+| `/api/session` | GET (WebSocket upgrade) | PTY session. Token passed as `?token=` query param (browsers cannot set WS headers). |
+
+### WebSocket protocol (`/api/session`)
+
+JSON text frames.
+
+Client → server:
+
+```json
+{"type":"attach","sessionId":"<optional existing id>","cols":80,"rows":24}
+{"type":"input","data":"ls\r"}
+{"type":"resize","cols":120,"rows":40}
+{"type":"detach"}
+{"type":"kill"}
+```
+
+Server → client:
+
+```json
+{"type":"attached","sessionId":"...","scrollback":"<replayed buffer>"}
+{"type":"output","data":"..."}
+{"type":"exited","exitCode":0}
+{"type":"error","message":"..."}
+```
+
+Omit `sessionId` on attach to create a new session. Detach keeps the session running; reattach with the same `sessionId` to resume with scrollback replay.
+
+## Agent integration patterns
+
+Tailminal is designed so agents need **zero SDK integration** — spawn the CLI as a subprocess.
+
+### One-shot commands (recommended default)
+
+```bash
+tailminal exec laptop -- adb devices
+echo $?   # remote exit code propagates
+```
+
+Any agent tool that can run subprocesses gets stdout/stderr/exit-code semantics for free.
+
+### Interactive sessions
+
+```bash
+tailminal attach laptop
+# bidirectional pipe: write commands to stdin, read stdout
+# Ctrl+] (0x1d) detaches without killing the session
+```
+
+### Programmatic (Node.js/TypeScript)
+
+```ts
+import { TailminalClient } from '@tailminal/client'
+
+const client = new TailminalClient('http://laptop:7601', token)
+
+const end = await client.exec(
+  { cmd: 'adb devices', shell: 'auto' },
+  { onChunk: (stream, data) => process.stdout.write(data) },
+)
+console.log('exit code:', end.exitCode)
+
+const sock = client.openSession({ cols: 100, rows: 30 })
+sock.on('output', (d) => process.stdout.write(d))
+sock.write('echo hi\r')
+```
+
+### Safety guidance for agents
+
+- Prefer one-shot `exec` with `timeoutMs` over long-lived sessions.
+- Exit code `null` means the process was killed (timeout) or failed to spawn.
+- Tokens grant full shell access to the node — never exfiltrate or log them; keep them inside the tailnet.
+
+## Troubleshooting
+
+- **401 responses** — token missing/mismatched. Check `~/.tailminal/token` on the target node vs. what the client sends (`TAILMINAL_TOKEN` or local token file).
+- **Host offline in `tailminal hosts`** — node not running, wrong port, or MagicDNS name wrong. Verify with `curl http://<host>:7601/api/health`.
+- **`shell 'sh' is not available on Windows`** (and vice versa) — shell prefs are platform-specific; use `auto` unless you need a specific shell.
+- **Session not found on reattach** — the node restarted (sessions are in-memory) or the TTL reaper removed it.
+
+## Repository layout
+
+```
+packages/shared    Zod protocol types (single source of truth for the wire format)
+packages/server    Fastify server, node-pty session manager, auth, web UI assets
+packages/client    HTTP/WS client library (TailminalClient, SessionSocket)
+apps/cli           `tailminal` binary
+website/           This marketing site + llms.txt
+```

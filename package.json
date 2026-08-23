@@ -1,0 +1,20 @@
+{
+  "name": "tailminal",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Use the terminal of any device in your Tailscale tailnet from any other device.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

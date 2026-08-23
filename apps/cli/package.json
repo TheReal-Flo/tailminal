@@ -1,0 +1,22 @@
+{
+  "name": "@tailminal/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "tailminal": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tailminal/client": "workspace:*",
+    "@tailminal/server": "workspace:*",
+    "@tailminal/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.6.0"
+  }
+}
