@@ -101,9 +101,8 @@
       <h2>Up and running in three steps</h2>
       <ol class="steps">
         <li>
-          <h3>Install &amp; build</h3>
-          <pre>git clone &lt;your-fork&gt; &amp;&amp; cd tailminal
-pnpm install &amp;&amp; pnpm build</pre>
+          <h3>Install</h3>
+          <pre>npm install -g tailminal</pre>
         </li>
         <li>
           <h3>Start a node</h3>
@@ -117,7 +116,8 @@ tailminal exec laptop -- uname -a
 tailminal attach laptop</pre>
         </li>
       </ol>
-      <p class="center">
+      <p class="center dim">
+        Also available <a href="https://www.npmjs.com/package/tailminal">on npm</a> ·
         Add peers to <code>~/.tailminal/config.json</code> — they appear in the CLI
         and the web UI automatically.
       </p>

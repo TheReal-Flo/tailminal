@@ -18,13 +18,23 @@ This file is written for AI agents and LLMs. It contains everything needed to in
 
 ## Requirements
 
-- Node.js >= 20 and pnpm (native build toolchain needed once for `node-pty`; on Windows this uses bundled ConPTY, no VS build tools required for the prebuilt path)
+- Node.js >= 20 and pnpm (from-source builds only; the npm package ships prebuilt and needs no toolchain)
 - A Tailscale tailnet with MagicDNS enabled (recommended) — any DNS name or IP works
 
 ## Install
 
+Preferred — from npm (installs the `tailminal` binary globally):
+
 ```bash
-git clone <repository-url> tailminal
+npm install -g tailminal
+```
+
+Requires Node.js >= 20 (native toolchain not needed; node-pty ships prebuilt binaries for common platforms).
+
+Alternative — from source (development):
+
+```bash
+git clone https://github.com/TheReal-Flo/tailminal tailminal
 cd tailminal
 pnpm install
 pnpm build

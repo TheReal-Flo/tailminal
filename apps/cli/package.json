@@ -1,20 +1,55 @@
 {
-  "name": "@tailminal/cli",
-  "version": "0.1.0",
+  "name": "tailminal",
+  "version": "0.1.1",
+  "description": "Use the terminal of any device in your Tailscale tailnet from any other device. Persistent PTY sessions, agent-friendly CLI, web UI on every node.",
+  "license": "MIT",
   "type": "module",
   "bin": {
-    "tailminal": "./dist/index.js"
+    "tailminal": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "static"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "tailscale",
+    "terminal",
+    "remote",
+    "ssh",
+    "pty",
+    "mesh",
+    "agent",
+    "cli",
+    "tailnet"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TheReal-Flo/tailminal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TheReal-Flo/tailminal/issues"
+  },
+  "homepage": "https://github.com/TheReal-Flo/tailminal#readme",
   "scripts": {
     "build": "tsup",
+    "prebundle": "node -e \"const fs=require('fs');fs.copyFileSync('../../README.md','README.md');fs.rmSync('static',{recursive:true,force:true});fs.cpSync('../../packages/server/static','static',{recursive:true})\"",
+    "bundle": "pnpm build",
+    "prepublishOnly": "pnpm -w build && pnpm bundle && pnpm prebundle",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tailminal/client": "workspace:*",
-    "@tailminal/server": "workspace:*",
-    "@tailminal/shared": "workspace:*"
+    "@fastify/static": "^8.0.0",
+    "@fastify/websocket": "^11.0.0",
+    "fastify": "^5.0.0",
+    "node-pty": "^1.0.0"
   },
   "devDependencies": {
+    "@tailminal/client": "workspace:*",
+    "@tailminal/server": "workspace:*",
+    "@tailminal/shared": "workspace:*",
     "@types/node": "^24.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.6.0"

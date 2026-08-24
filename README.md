@@ -1,5 +1,9 @@
 # ⚡ Tailminal
 
+[![npm version](https://img.shields.io/npm/v/tailminal.svg)](https://www.npmjs.com/package/tailminal)
+[![npm downloads](https://img.shields.io/npm/dm/tailminal.svg)](https://www.npmjs.com/package/tailminal)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Use the terminal of any device in your Tailscale tailnet from any other device —
 manually via a web UI, interactively via CLI, or programmatically from agents
 (plain stdin/stdout subprocess).
@@ -22,11 +26,17 @@ No central hub. Discovery via MagicDNS.
 - **Cross-platform** — Windows (PowerShell/CMD), macOS (zsh), Linux (bash/sh)
 - **Secure by default** — tailnet privacy + per-node bearer token
 
-## Install & run
+## Install
 
 ```bash
-pnpm install
-pnpm build
+npm install -g tailminal
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/TheReal-Flo/tailminal
+cd tailminal && pnpm install && pnpm build
 ```
 
 Start the node server (generates `~/.tailminal/token` and `~/.tailminal/config.json` on first run):

@@ -1,5 +1,6 @@
 node_modules/
 dist/
 *.tsbuildinfo
+*.tgz
 packages/server/static/bundle.js
 packages/server/static/bundle.css
