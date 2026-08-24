@@ -92,8 +92,12 @@ body {
   flex-shrink: 0;
 }
 
-.dot.online {
+.dot.available {
   background: #35c46a;
+}
+
+.dot.tailnet-only {
+  background: #d9a441;
 }
 
 .dot.offline {

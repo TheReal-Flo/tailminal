@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const TAILMINAL_VERSION = '0.2.0'
+export const TAILMINAL_VERSION = '0.2.1'
 export const DEFAULT_PORT = 7601
 
 // ---------- Config ----------
@@ -8,6 +8,8 @@ export const DEFAULT_PORT = 7601
 export const PeerSchema = z.object({
   name: z.string().min(1),
   address: z.string().min(1),
+  online: z.boolean().optional(),
+  available: z.boolean().optional(),
 })
 export type Peer = z.infer<typeof PeerSchema>
 
@@ -15,6 +17,7 @@ export const ConfigSchema = z.object({
   port: z.number().int().positive().default(DEFAULT_PORT),
   /** Tailnet clients are trusted by source address by default; token mode is available as an opt-in. */
   auth: z.enum(['tailnet', 'token']).default('tailnet'),
+  discoverPeers: z.boolean().default(true),
   /** 'persistent' (default) keeps sessions until process exit; otherwise e.g. '30m', '24h' */
   sessionTTL: z.string().default('persistent'),
   /** Override the PTY login shell executable on this node */

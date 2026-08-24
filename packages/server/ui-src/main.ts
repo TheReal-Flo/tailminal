@@ -4,7 +4,7 @@ import '@xterm/xterm/css/xterm.css'
 
 interface HostsResponse {
   self: { hostname: string; platform: string; arch: string; version: string }
-  peers: Array<{ name: string; address: string }>
+  peers: Array<{ name: string; address: string; online?: boolean; available?: boolean }>
 }
 
 interface HealthResponse {
@@ -165,11 +165,12 @@ async function refreshHostList(): Promise<void> {
     return
   }
   const selfItem = addItem(data.self.hostname + ' (this node)', '', true)
-  void markStatus(selfItem, location.origin)
+  markStatus(selfItem, 'available')
   for (const peer of data.peers) {
     const baseUrl = `http://${peer.address}:7601`
     const item = addItem(peer.name, baseUrl, false)
-    void markStatus(item, baseUrl)
+    const status = peer.available ? 'available' : peer.online ? 'tailnet-only' : 'offline'
+    markStatus(item, status)
   }
 
   function addItem(name: string, baseUrl: string, local: boolean): HTMLLIElement {
@@ -187,11 +188,10 @@ async function refreshHostList(): Promise<void> {
     return li
   }
 
-  async function markStatus(li: HTMLLIElement, baseUrl: string): Promise<void> {
+  function markStatus(li: HTMLLIElement, status: 'available' | 'tailnet-only' | 'offline'): void {
     const dot = li.querySelector('.dot') as HTMLElement
-    const healthUrl = `${baseUrl}/api/health`
-    const ok = await fetch(healthUrl).then((r) => r.ok).catch(() => false)
-    dot.classList.add(ok ? 'online' : 'offline')
+    dot.classList.add(status)
+    if (status === 'tailnet-only') li.title = 'Online in Tailscale, but Tailminal is not running'
   }
 
   function addHint(text: string): void {

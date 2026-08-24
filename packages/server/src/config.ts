@@ -45,7 +45,15 @@ export function loadConfig(): Config {
       throw new Error(`Invalid JSON in ${file}: ${(err as Error).message}`)
     }
   }
-  const config = ConfigSchema.parse(raw)
+  let config = ConfigSchema.parse(raw)
+  if (
+    config.peers.length === 1 &&
+    config.peers[0]?.name === 'laptop' &&
+    config.peers[0].address === 'laptop.tailnet-name.ts.net'
+  ) {
+    config = { ...config, peers: [] }
+    fs.writeFileSync(file, `${JSON.stringify(config, null, 2)}\n`)
+  }
   if (!fs.existsSync(file)) {
     writeExampleConfig(file, config)
   }
@@ -56,10 +64,9 @@ function writeExampleConfig(file: string, config: Config): void {
   const example = `{
   "port": ${config.port},
   "auth": "${config.auth}",
+  "discoverPeers": ${config.discoverPeers},
   "sessionTTL": "${config.sessionTTL}",
-  "peers": [
-    { "name": "laptop", "address": "laptop.tailnet-name.ts.net" }
-  ]
+  "peers": []
 }
 `
   fs.writeFileSync(file, example)

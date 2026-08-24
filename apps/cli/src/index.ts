@@ -38,7 +38,7 @@ function configPath(): string {
 function loadLocalConfig(): {
   port: number
   auth: 'tailnet' | 'token'
-  peers: Array<{ name: string; address: string }>
+  peers: Array<{ name: string; address: string; online?: boolean; available?: boolean }>
 } {
   const file = configPath()
   let raw = {}
@@ -72,16 +72,25 @@ function clientFor(host: string): TailminalClient {
 }
 
 async function cmdHosts(): Promise<void> {
-  const { port, peers } = loadLocalConfig()
-  const targets: Array<{ name: string; base: string }> = [
-    ...peers.map((p) => ({ name: p.name, base: normalizeBaseUrl(p.address, port) })),
+  const { port, peers: configuredPeers } = loadLocalConfig()
+  let peers = configuredPeers
+  try {
+    const local = new TailminalClient(normalizeBaseUrl('127.0.0.1', port), resolveToken())
+    peers = (await local.hosts(7000)).peers
+  } catch {}
+  const targets: Array<{ name: string; base: string; tailnetOnline?: boolean }> = [
+    ...peers.map((p) => ({
+      name: p.name,
+      base: normalizeBaseUrl(p.address, port),
+      tailnetOnline: p.online,
+    })),
   ]
   const rows: string[] = []
   rows.push('NAME'.padEnd(20), 'URL'.padEnd(45), 'STATUS')
   for (const target of targets) {
     const client = new TailminalClient(target.base, resolveToken())
     const alive = await client.health(1500)
-    let detail = alive ? 'online' : 'offline'
+    let detail = alive ? 'online' : target.tailnetOnline ? 'tailnet-online (tailminal unavailable)' : 'offline'
     if (alive) {
       try {
         const info = await client.hosts()

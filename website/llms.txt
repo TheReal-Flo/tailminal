@@ -60,6 +60,7 @@ The CLI entry point is `apps/cli/dist/index.js` (shebang included). Symlink or i
    {
      "port": 7601,
      "auth": "tailnet",
+     "discoverPeers": true,
      "sessionTTL": "persistent",
      "peers": [
        { "name": "laptop", "address": "laptop.your-tailnet.ts.net" }
@@ -69,13 +70,14 @@ The CLI entry point is `apps/cli/dist/index.js` (shebang included). Symlink or i
 
    - `port`: fixed listen port (default 7601). All nodes should use the same port.
    - `auth`: `"tailnet"` (default) trusts loopback and Tailscale source addresses without a token. `"token"` enables legacy bearer-token authentication and creates `~/.tailminal/token`.
+   - `discoverPeers`: `true` (default) reads `tailscale status --json`, lists online tailnet peers, and reports whether each one answers Tailminal's health endpoint.
    - `sessionTTL`: `"persistent"` (default — sessions live until process exit/reboot) or a duration like `"30m"`, `"12h"`, `"7d"` after which detached idle sessions are reaped.
    - `shell`: optional absolute path overriding the PTY login shell on this node.
    - `peers`: MagicDNS names or IPs of other nodes, shown by `tailminal hosts` and in the web UI.
 
 3. Keep the server running (systemd user service, launchd, or Task Scheduler — see the README in the repo root).
 
-4. Start Tailminal on another tailnet device and connect by its MagicDNS name. No credential exchange is needed in the default mode.
+4. Start Tailminal on another tailnet device. It appears automatically; no peer configuration or credential exchange is needed in the default mode.
 
 Environment overrides: `TAILMINAL_HOME` (config dir, default `~/.tailminal`), `TAILMINAL_TOKEN` (only for nodes configured with `"auth": "token"`).
 
@@ -83,7 +85,7 @@ Environment overrides: `TAILMINAL_HOME` (config dir, default `~/.tailminal`), `T
 
 ```bash
 tailminal hosts                      # lists peers with online/offline status
-curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.2.0","auth":"tailnet"}
+curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.2.1","auth":"tailnet"}
 tailminal exec laptop -- uname -a    # or: ver / systeminfo on Windows
 ```
 

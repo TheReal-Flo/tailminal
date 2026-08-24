@@ -25,6 +25,7 @@ No central hub. Discovery via MagicDNS.
 - **Web UI on every node** — host list, live xterm.js terminal, one-shot command form
 - **Cross-platform** — Windows (PowerShell/CMD), macOS (zsh), Linux (bash/sh)
 - **Zero-setup tailnet access** — Tailscale and loopback clients connect without another credential
+- **Automatic discovery** — online tailnet devices appear without editing a peer list, with Tailminal availability shown separately
 
 ## Install
 
@@ -51,6 +52,7 @@ tailminal serve        # listens on 0.0.0.0:7601
 {
   "port": 7601,
   "auth": "tailnet",
+  "discoverPeers": true,
   "sessionTTL": "persistent",
   "peers": [
     { "name": "laptop", "address": "laptop.your-tailnet.ts.net" }
@@ -62,11 +64,15 @@ tailminal serve        # listens on 0.0.0.0:7601
 | ------------ | ------------- | -------------------------------------------------------------- |
 | `port`       | `7601`        | Fixed listen port for all nodes                                |
 | `auth`       | `tailnet`     | Passwordless access from loopback/Tailscale addresses; use `token` for legacy bearer auth |
+| `discoverPeers` | `true`      | Discover online Tailnet devices and check Tailminal availability |
 | `sessionTTL` | `persistent`  | Sessions live until reboot; or auto-reap detached ones (`30m`, `12h`, `7d`, …) |
 | `shell`      | platform default | Override the PTY login shell executable                     |
 | `peers`      | `[]`          | MagicDNS hostnames shown in the host list                      |
 
-With the default `"auth": "tailnet"`, no token setup is needed. Requests from
+With the defaults, no peer list or token setup is needed. Tailminal reads the
+local `tailscale status`, adds online peers automatically, and indicates whether
+Tailminal is running on port 7601. Configured `peers` remain useful for aliases or devices
+that cannot be discovered. Requests from
 LAN and public addresses are rejected even though the server listens on all
 interfaces. To opt into the old credential flow, set `"auth": "token"`; the
 server then creates `~/.tailminal/token`, and clients can use that file or

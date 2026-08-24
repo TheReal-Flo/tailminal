@@ -22,6 +22,7 @@ describe('ConfigSchema', () => {
     const cfg = ConfigSchema.parse({})
     expect(cfg.port).toBe(7601)
     expect(cfg.auth).toBe('tailnet')
+    expect(cfg.discoverPeers).toBe(true)
     expect(cfg.sessionTTL).toBe('persistent')
     expect(cfg.peers).toEqual([])
   })

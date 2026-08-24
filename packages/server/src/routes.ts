@@ -5,11 +5,13 @@ import {
   TAILMINAL_VERSION,
   WsClientFrameSchema,
   type HostInfo,
+  type Peer,
 } from '@tailminal/shared'
 import os from 'node:os'
 import type { SessionManager } from './sessions.js'
 import { runExec } from './exec.js'
 import type { Config } from '@tailminal/shared'
+import { discoverTailscalePeers, isTailminalPeer } from './tailscale.js'
 
 export interface RouteContext {
   config: Config
@@ -35,10 +37,22 @@ export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
     auth: ctx.config.auth,
   }))
 
-  app.get('/api/hosts', async () => ({
-    self: hostSelfInfo(),
-    peers: ctx.config.peers,
-  }))
+  app.get('/api/hosts', async () => {
+    const configured = await Promise.all(
+      ctx.config.peers.map(async (peer) => {
+        const available = await isTailminalPeer(peer.address, ctx.config.port)
+        return { ...peer, online: available, available }
+      }),
+    )
+    const discovered = ctx.config.discoverPeers ? await discoverTailscalePeers(ctx.config.port) : []
+    const peers: Peer[] = [...configured]
+    for (const peer of discovered) {
+      if (!peers.some((existing) => existing.name === peer.name || existing.address === peer.address)) {
+        peers.push(peer)
+      }
+    }
+    return { self: hostSelfInfo(), peers }
+  })
 
   app.post('/api/exec', async (request, reply) => {
     const parsed = ExecRequestSchema.safeParse(request.body)
