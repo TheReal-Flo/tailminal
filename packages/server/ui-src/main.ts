@@ -24,6 +24,27 @@ const killBtn = document.getElementById('kill-btn') as HTMLButtonElement
 const container = document.getElementById('terminal-container') as HTMLDivElement
 let usesTokenAuth = false
 
+const aliasStorageKey = 'tailminal-device-aliases'
+let deviceAliases = loadDeviceAliases()
+
+function loadDeviceAliases(): Record<string, string> {
+  try {
+    const value = JSON.parse(localStorage.getItem(aliasStorageKey) ?? '{}') as unknown
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+    return Object.fromEntries(
+      Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+    )
+  } catch {
+    return {}
+  }
+}
+
+function saveDeviceAlias(key: string, alias: string): void {
+  if (alias) deviceAliases[key] = alias
+  else delete deviceAliases[key]
+  localStorage.setItem(aliasStorageKey, JSON.stringify(deviceAliases))
+}
+
 tokenInput.value = localStorage.getItem('tailminal-token') ?? ''
 tokenInput.addEventListener('change', () => {
   localStorage.setItem('tailminal-token', tokenInput.value)
@@ -164,25 +185,75 @@ async function refreshHostList(): Promise<void> {
     addHint('failed to load hosts')
     return
   }
-  const selfItem = addItem(data.self.hostname + ' (this node)', '', true)
+  const selfItem = addItem(data.self.hostname, '', true, '__self__')
   markStatus(selfItem, 'available')
   for (const peer of data.peers) {
     const baseUrl = `http://${peer.address}:7601`
-    const item = addItem(peer.name, baseUrl, false)
+    const item = addItem(peer.name, baseUrl, false, peer.address.toLowerCase())
     const status = peer.available ? 'available' : peer.online ? 'tailnet-only' : 'offline'
     markStatus(item, status)
   }
 
-  function addItem(name: string, baseUrl: string, local: boolean): HTMLLIElement {
+  function addItem(name: string, baseUrl: string, local: boolean, aliasKey: string): HTMLLIElement {
     const li = document.createElement('li')
     const dot = document.createElement('span')
     dot.className = 'dot'
+    const label = document.createElement('span')
+    label.className = 'host-name'
+    const editButton = document.createElement('button')
+    editButton.type = 'button'
+    editButton.className = 'rename-host'
+    editButton.textContent = '✎'
+
+    const updateLabel = (): void => {
+      const displayName = deviceAliases[aliasKey] || name
+      label.textContent = `${displayName}${local ? ' (this node)' : ''}`
+      editButton.title = `Rename ${displayName} in this browser`
+      editButton.setAttribute('aria-label', editButton.title)
+    }
+
+    const beginRename = (): void => {
+      const input = document.createElement('input')
+      input.className = 'alias-input'
+      input.type = 'text'
+      input.maxLength = 64
+      input.value = deviceAliases[aliasKey] || name
+      label.replaceWith(input)
+      editButton.hidden = true
+      input.focus()
+      input.select()
+      let finished = false
+      const finish = (save: boolean): void => {
+        if (finished) return
+        finished = true
+        if (save) {
+          const alias = input.value.trim()
+          saveDeviceAlias(aliasKey, alias === name ? '' : alias)
+        }
+        input.replaceWith(label)
+        editButton.hidden = false
+        updateLabel()
+      }
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') finish(true)
+        if (event.key === 'Escape') finish(false)
+      })
+      input.addEventListener('click', (event) => event.stopPropagation())
+      input.addEventListener('blur', () => finish(true))
+    }
+
+    updateLabel()
     li.appendChild(dot)
-    li.appendChild(document.createTextNode(name))
+    li.appendChild(label)
+    li.appendChild(editButton)
     li.addEventListener('click', () => {
       for (const el of Array.from(hostList.children)) el.classList.remove('active')
       li.classList.add('active')
-      openTerminal(baseUrl || location.origin, name)
+      openTerminal(baseUrl || location.origin, deviceAliases[aliasKey] || name)
+    })
+    editButton.addEventListener('click', (event) => {
+      event.stopPropagation()
+      beginRename()
     })
     hostList.appendChild(li)
     return li

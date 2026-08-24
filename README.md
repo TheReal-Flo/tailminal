@@ -107,7 +107,9 @@ tailminal attach laptop                        # raw bidirectional shell on stdi
 ### Web UI
 
 Open `http://<node>:7601` over Tailscale, pick a host, and get a live terminal.
-No credential prompt appears in the default tailnet mode.
+No credential prompt appears in the default tailnet mode. Device names can be
+renamed with the edit button; aliases are stored only in that browser and do
+not change Tailscale or Tailminal configuration.
 
 ## Autostart
 

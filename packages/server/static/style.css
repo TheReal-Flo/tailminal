@@ -84,6 +84,39 @@ body {
   color: #fff;
 }
 
+.host-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rename-host {
+  flex-shrink: 0;
+  background: transparent;
+  color: inherit;
+  padding: 2px 5px;
+  opacity: 0.55;
+}
+
+.rename-host:hover,
+.rename-host:focus-visible {
+  opacity: 1;
+  background: rgb(255 255 255 / 10%);
+}
+
+.alias-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 3px 5px;
+  font: inherit;
+}
+
 .dot {
   width: 9px;
   height: 9px;
