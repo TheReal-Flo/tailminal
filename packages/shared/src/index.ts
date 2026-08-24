@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const TAILMINAL_VERSION = '0.2.1'
+export const TAILMINAL_VERSION = '0.2.2'
 export const DEFAULT_PORT = 7601
 
 // ---------- Config ----------

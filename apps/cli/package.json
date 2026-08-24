@@ -1,6 +1,6 @@
 {
   "name": "tailminal",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Use the terminal of any device in your Tailscale tailnet from any other device. Persistent PTY sessions, agent-friendly CLI, web UI on every node.",
   "license": "MIT",
   "type": "module",

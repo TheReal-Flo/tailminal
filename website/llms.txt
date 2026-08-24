@@ -85,7 +85,7 @@ Environment overrides: `TAILMINAL_HOME` (config dir, default `~/.tailminal`), `T
 
 ```bash
 tailminal hosts                      # lists peers with online/offline status
-curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.2.1","auth":"tailnet"}
+curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.2.2","auth":"tailnet"}
 tailminal exec laptop -- uname -a    # or: ver / systeminfo on Windows
 ```
 
