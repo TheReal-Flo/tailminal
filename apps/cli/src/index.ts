@@ -86,7 +86,7 @@ async function cmdHosts(): Promise<void> {
     })),
   ]
   const rows: string[] = []
-  rows.push('NAME'.padEnd(20), 'URL'.padEnd(45), 'STATUS')
+  rows.push(`${'NAME'.padEnd(20)} ${'URL'.padEnd(45)} STATUS`)
   for (const target of targets) {
     const client = new TailminalClient(target.base, resolveToken())
     const alive = await client.health(1500)
@@ -99,7 +99,7 @@ async function cmdHosts(): Promise<void> {
         detail = 'access-denied'
       }
     }
-    rows.push(target.name.padEnd(20), target.base.padEnd(45), detail)
+    rows.push(`${target.name.padEnd(20)} ${target.base.padEnd(45)} ${detail}`)
   }
   console.log(rows.join('\n'))
 }
