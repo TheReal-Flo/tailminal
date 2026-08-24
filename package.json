@@ -1,7 +1,7 @@
 {
   "name": "tailminal",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Use the terminal of any device in your Tailscale tailnet from any other device.",
   "type": "module",
   "scripts": {

@@ -55,6 +55,7 @@ export function loadConfig(): Config {
 function writeExampleConfig(file: string, config: Config): void {
   const example = `{
   "port": ${config.port},
+  "auth": "${config.auth}",
   "sessionTTL": "${config.sessionTTL}",
   "peers": [
     { "name": "laptop", "address": "laptop.tailnet-name.ts.net" }

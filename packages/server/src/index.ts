@@ -7,12 +7,12 @@ import fastifyStatic from '@fastify/static'
 import { parseTTL, type Config } from '@tailminal/shared'
 import { loadConfig, loadOrCreateToken } from './config.js'
 import { registerAuth } from './auth.js'
-import { registerRoutes, setRuntimeToken } from './routes.js'
+import { registerRoutes } from './routes.js'
 import { SessionManager } from './sessions.js'
 
 export interface ServerHandle {
   config: Config
-  token: string
+  token?: string
   port: number
   close(): Promise<void>
 }
@@ -29,8 +29,7 @@ export async function startServer(options?: {
   logLevel?: 'error' | 'warn' | 'info' | 'silent'
 }): Promise<ServerHandle> {
   const config = options?.config ?? loadConfig()
-  const token = loadOrCreateToken()
-  setRuntimeToken(token)
+  const token = config.auth === 'token' ? loadOrCreateToken() : undefined
 
   const ttlMs = parseTTL(config.sessionTTL)
   const sessions = new SessionManager(ttlMs, config.shell)
@@ -42,7 +41,7 @@ export async function startServer(options?: {
   })
 
   await app.register(websocket, { options: { maxPayload: 1024 * 1024 } })
-  registerAuth(app, token)
+  registerAuth(app, token ? { mode: 'token', token } : { mode: 'tailnet' })
 
   try {
     await app.register(fastifyStatic, { root: staticDir() })
@@ -70,5 +69,6 @@ export function printStartupBanner(handle: ServerHandle): void {
   console.log(`[tailminal] server listening`)
   console.log(`  host : ${hostname}`)
   console.log(`  url  : http://localhost:${handle.port}`)
+  console.log(`  auth : ${handle.config.auth === 'tailnet' ? 'tailnet (no token required)' : 'bearer token'}`)
   console.log(`  peers: ${handle.config.peers.map((p) => p.name).join(', ') || '(none configured)'}`)
 }

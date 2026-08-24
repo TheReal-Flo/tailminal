@@ -1,6 +1,6 @@
 {
   "name": "tailminal",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Use the terminal of any device in your Tailscale tailnet from any other device. Persistent PTY sessions, agent-friendly CLI, web UI on every node.",
   "license": "MIT",
   "type": "module",
@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/TheReal-Flo/tailminal#readme",
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && pnpm prebundle",
     "prebundle": "node -e \"const fs=require('fs');fs.copyFileSync('../../README.md','README.md');fs.rmSync('static',{recursive:true,force:true});fs.cpSync('../../packages/server/static','static',{recursive:true})\"",
     "bundle": "pnpm build",
     "prepublishOnly": "pnpm -w build && pnpm bundle && pnpm prebundle",

@@ -53,11 +53,14 @@ export interface ExecStreamHandlers {
 export class TailminalClient {
   constructor(
     public baseUrl: string,
-    public token: string,
+    public token?: string,
   ) {}
 
   private headers(): Record<string, string> {
-    return { authorization: `Bearer ${this.token}`, 'content-type': 'application/json' }
+    return {
+      ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+      'content-type': 'application/json',
+    }
   }
 
   private async fetchJson<T>(path: string, init?: RequestInit & { timeoutMs?: number }): Promise<T> {
@@ -153,11 +156,12 @@ export class SessionSocket extends EventEmitter {
 
   constructor(
     baseUrl: string,
-    token: string,
+    token?: string,
     opts: { sessionId?: string; cols?: number; rows?: number } = {},
   ) {
     super()
-    const wsUrl = `${baseUrl.replace(/^http/, 'ws')}/api/session?token=${encodeURIComponent(token)}`
+    const tokenQuery = token ? `?token=${encodeURIComponent(token)}` : ''
+    const wsUrl = `${baseUrl.replace(/^http/, 'ws')}/api/session${tokenQuery}`
     this.ws = new WebSocket(wsUrl)
     this.openPromise = new Promise((resolve, reject) => {
       this.ws.once('open', resolve)
@@ -232,7 +236,7 @@ export class SessionSocket extends EventEmitter {
 }
 
 /** Build clients for a node's configured peers plus itself. */
-export function peerClients(config: Config, token: string): Map<string, TailminalClient> {
+export function peerClients(config: Config, token?: string): Map<string, TailminalClient> {
   const map = new Map<string, TailminalClient>()
   map.set('localhost', new TailminalClient(normalizeBaseUrl('127.0.0.1', config.port), token))
   for (const peer of config.peers) {

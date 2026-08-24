@@ -18,10 +18,10 @@ Usage:
   tailminal attach <host> [session-id]     Attach to an interactive PTY session
                                            (Ctrl+] detaches, keeps session alive)
   tailminal sessions <host>                List sessions on <host>
-  tailminal token                          Print the local node token
+  tailminal token                          Print the token (only when auth is "token")
 
 Environment:
-  TAILMINAL_TOKEN    Override token used to authenticate to remote nodes
+  TAILMINAL_TOKEN    Token for nodes explicitly configured with auth: "token"
   TAILMINAL_HOME     Override config directory (default ~/.tailminal)
 `
 
@@ -35,7 +35,11 @@ function configPath(): string {
   return path.join(dir, 'config.json')
 }
 
-function loadLocalConfig(): { port: number; peers: Array<{ name: string; address: string }> } {
+function loadLocalConfig(): {
+  port: number
+  auth: 'tailnet' | 'token'
+  peers: Array<{ name: string; address: string }>
+} {
   const file = configPath()
   let raw = {}
   if (fs.existsSync(file)) {
@@ -46,18 +50,20 @@ function loadLocalConfig(): { port: number; peers: Array<{ name: string; address
     }
   }
   const cfg = ConfigSchema.parse(raw)
-  return { port: cfg.port, peers: cfg.peers }
+  return { port: cfg.port, auth: cfg.auth, peers: cfg.peers }
 }
 
-function resolveToken(): string {
+function resolveToken(required = false): string | undefined {
   if (process.env.TAILMINAL_TOKEN) return process.env.TAILMINAL_TOKEN
+  if (!required && loadLocalConfig().auth !== 'token') return undefined
   const dir = process.env.TAILMINAL_HOME ?? path.join(os.homedir(), '.tailminal')
   const file = path.join(dir, 'token')
   if (fs.existsSync(file)) {
     const token = fs.readFileSync(file, 'utf8').trim()
     if (token) return token
   }
-  fail(`no token found at ${file}. Run 'tailminal serve' once to generate one.`)
+  if (required) fail(`no token found at ${file}. Set auth to "token" and run 'tailminal serve' first.`)
+  return undefined
 }
 
 function clientFor(host: string): TailminalClient {
@@ -81,8 +87,7 @@ async function cmdHosts(): Promise<void> {
         const info = await client.hosts()
         detail += ` (${info.self.platform}/${info.self.arch})`
       } catch {
-        /* health ok but auth failed */
-        detail = 'auth-failed'
+        detail = 'access-denied'
       }
     }
     rows.push(target.name.padEnd(20), target.base.padEnd(45), detail)
@@ -211,7 +216,7 @@ async function main(): Promise<void> {
       return
     }
     case 'token': {
-      console.log(resolveToken())
+      console.log(resolveToken(true))
       return
     }
     case 'sessions': {

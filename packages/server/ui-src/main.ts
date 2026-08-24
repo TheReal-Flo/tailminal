@@ -7,6 +7,12 @@ interface HostsResponse {
   peers: Array<{ name: string; address: string }>
 }
 
+interface HealthResponse {
+  ok: boolean
+  auth?: 'tailnet' | 'token'
+}
+
+const tokenRow = document.getElementById('token-row') as HTMLDivElement
 const tokenInput = document.getElementById('token-input') as HTMLInputElement
 const hostList = document.getElementById('host-list') as HTMLUListElement
 const execForm = document.getElementById('exec-form') as HTMLFormElement
@@ -16,6 +22,7 @@ const activeLabel = document.getElementById('active-host-label') as HTMLSpanElem
 const detachBtn = document.getElementById('detach-btn') as HTMLButtonElement
 const killBtn = document.getElementById('kill-btn') as HTMLButtonElement
 const container = document.getElementById('terminal-container') as HTMLDivElement
+let usesTokenAuth = false
 
 tokenInput.value = localStorage.getItem('tailminal-token') ?? ''
 tokenInput.addEventListener('change', () => {
@@ -24,11 +31,23 @@ tokenInput.addEventListener('change', () => {
 })
 
 function token(): string {
-  return tokenInput.value.trim()
+  return usesTokenAuth ? tokenInput.value.trim() : ''
 }
 
 function authHeaders(): Record<string, string> {
   return token() ? { authorization: `Bearer ${token()}` } : {}
+}
+
+async function detectAuthMode(): Promise<void> {
+  try {
+    const res = await fetch('/api/health')
+    const health = (await res.json()) as HealthResponse
+    usesTokenAuth = health.auth === 'token'
+    tokenRow.hidden = !usesTokenAuth
+  } catch {
+    usesTokenAuth = false
+    tokenRow.hidden = true
+  }
 }
 
 // ---------- Terminal ----------
@@ -67,7 +86,8 @@ function openTerminal(hostUrl: string, hostName: string, sessionId?: string): vo
   term.open(el)
   fitAddon.fit()
 
-  const wsUrl = `${hostUrl.replace(/^http/, 'ws')}/api/session?token=${encodeURIComponent(token())}`
+  const tokenQuery = token() ? `?token=${encodeURIComponent(token())}` : ''
+  const wsUrl = `${hostUrl.replace(/^http/, 'ws')}/api/session${tokenQuery}`
   sock = new WebSocket(wsUrl)
 
   const send = (frame: object): void => {
@@ -128,10 +148,15 @@ async function refreshHostList(): Promise<void> {
   hostList.innerHTML = ''
   let data: HostsResponse
   try {
-    // /api/health is open; use it to detect reachability without a token
     const res = await fetch('/api/hosts', { headers: authHeaders() })
     if (res.status === 401) {
-      addHint('enter the node token to load hosts')
+      usesTokenAuth = true
+      tokenRow.hidden = false
+      addHint('enter the token configured for this node')
+      return
+    }
+    if (res.status === 403) {
+      addHint('open Tailminal over Tailscale or on this device')
       return
     }
     data = await res.json()
@@ -140,10 +165,11 @@ async function refreshHostList(): Promise<void> {
     return
   }
   const selfItem = addItem(data.self.hostname + ' (this node)', '', true)
-  void markStatus(selfItem)
+  void markStatus(selfItem, location.origin)
   for (const peer of data.peers) {
-    const item = addItem(peer.name, `http://${peer.address}:7601`, false)
-    void markStatus(item)
+    const baseUrl = `http://${peer.address}:7601`
+    const item = addItem(peer.name, baseUrl, false)
+    void markStatus(item, baseUrl)
   }
 
   function addItem(name: string, baseUrl: string, local: boolean): HTMLLIElement {
@@ -161,9 +187,10 @@ async function refreshHostList(): Promise<void> {
     return li
   }
 
-  async function markStatus(li: HTMLLIElement): Promise<void> {
+  async function markStatus(li: HTMLLIElement, baseUrl: string): Promise<void> {
     const dot = li.querySelector('.dot') as HTMLElement
-    const ok = await fetch('/api/health').then((r) => r.ok).catch(() => false)
+    const healthUrl = `${baseUrl}/api/health`
+    const ok = await fetch(healthUrl).then((r) => r.ok).catch(() => false)
     dot.classList.add(ok ? 'online' : 'offline')
   }
 
@@ -216,4 +243,4 @@ execForm.addEventListener('submit', async (event) => {
   }
 })
 
-void refreshHostList()
+void detectAuthMode().then(refreshHostList)

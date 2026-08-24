@@ -29,7 +29,11 @@ function hostSelfInfo(): HostInfo {
 }
 
 export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
-  app.get('/api/health', async () => ({ ok: true, version: TAILMINAL_VERSION }))
+  app.get('/api/health', async () => ({
+    ok: true,
+    version: TAILMINAL_VERSION,
+    auth: ctx.config.auth,
+  }))
 
   app.get('/api/hosts', async () => ({
     self: hostSelfInfo(),
@@ -79,21 +83,7 @@ export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
   }))
 
   // Bidirectional PTY session over WebSocket.
-  // Auth: token query param (browser WS cannot set headers).
   app.get('/api/session', { websocket: true }, (socket, request) => {
-    const url = new URL(request.url, 'http://localhost')
-    const provided = Buffer.from(url.searchParams.get('token') ?? '', 'utf8')
-    const expected = Buffer.from(ctx.config ? readTokenForCompare() : '', 'utf8')
-
-    const fail = (message: string): void => {
-      socket.send(JSON.stringify({ type: 'error', message }))
-      socket.close()
-    }
-    if (provided.length !== expected.length || !provided.equals(expected)) {
-      fail('invalid token')
-      return
-    }
-
     let detach: (() => void) | null = null
     let session = null as ReturnType<SessionManager['create']> | null
     const send = (frame: unknown): void => {
@@ -165,13 +155,4 @@ export function registerRoutes(app: FastifyInstance, ctx: RouteContext): void {
       detach = null
     })
   })
-}
-
-// The auth hook skips this route; we validate against the runtime token instead.
-let runtimeToken = ''
-export function setRuntimeToken(token: string): void {
-  runtimeToken = token
-}
-function readTokenForCompare(): string {
-  return runtimeToken
 }

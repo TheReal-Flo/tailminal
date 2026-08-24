@@ -1,6 +1,6 @@
 # Tailminal
 
-> Use the terminal of any device in your Tailscale tailnet from any other device. Every node runs an identical server (HTTP + WebSocket on port 7601) exposing one-shot command execution and persistent PTY sessions. Clients are a CLI (`tailminal`), a web UI, and a plain HTTP/WS API — all secured by a per-node bearer token inside the private tailnet.
+> Use the terminal of any device in your Tailscale tailnet from any other device. Every node runs an identical server (HTTP + WebSocket on port 7601) exposing one-shot command execution and persistent PTY sessions. Clients are a CLI (`tailminal`), a web UI, and a plain HTTP/WS API. Loopback and Tailscale clients connect without an extra credential; other source addresses are rejected.
 
 This file is written for AI agents and LLMs. It contains everything needed to install, configure, operate, and integrate with Tailminal without reading the human marketing page.
 
@@ -52,7 +52,6 @@ The CLI entry point is `apps/cli/dist/index.js` (shebang included). Symlink or i
 
    First run creates:
 
-   - `~/.tailminal/token` — random 48-hex-char bearer token (mode 0600). This is the node's credential.
    - `~/.tailminal/config.json` — defaults below.
 
 2. Edit `~/.tailminal/config.json`:
@@ -60,6 +59,7 @@ The CLI entry point is `apps/cli/dist/index.js` (shebang included). Symlink or i
    ```json
    {
      "port": 7601,
+     "auth": "tailnet",
      "sessionTTL": "persistent",
      "peers": [
        { "name": "laptop", "address": "laptop.your-tailnet.ts.net" }
@@ -68,21 +68,22 @@ The CLI entry point is `apps/cli/dist/index.js` (shebang included). Symlink or i
    ```
 
    - `port`: fixed listen port (default 7601). All nodes should use the same port.
+   - `auth`: `"tailnet"` (default) trusts loopback and Tailscale source addresses without a token. `"token"` enables legacy bearer-token authentication and creates `~/.tailminal/token`.
    - `sessionTTL`: `"persistent"` (default — sessions live until process exit/reboot) or a duration like `"30m"`, `"12h"`, `"7d"` after which detached idle sessions are reaped.
    - `shell`: optional absolute path overriding the PTY login shell on this node.
    - `peers`: MagicDNS names or IPs of other nodes, shown by `tailminal hosts` and in the web UI.
 
 3. Keep the server running (systemd user service, launchd, or Task Scheduler — see the README in the repo root).
 
-4. To let device A control device B, copy B's token to A (e.g. `~/.tailminal/token` there too, or export `TAILMINAL_TOKEN`). In a trusted tailnet, using one shared token across your own devices is the simple model.
+4. Start Tailminal on another tailnet device and connect by its MagicDNS name. No credential exchange is needed in the default mode.
 
-Environment overrides: `TAILMINAL_HOME` (config dir, default `~/.tailminal`), `TAILMINAL_TOKEN` (token for outbound client calls).
+Environment overrides: `TAILMINAL_HOME` (config dir, default `~/.tailminal`), `TAILMINAL_TOKEN` (only for nodes configured with `"auth": "token"`).
 
 ## Verify installation
 
 ```bash
 tailminal hosts                      # lists peers with online/offline status
-curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.1.0"} (no auth needed)
+curl http://laptop:7601/api/health   # -> {"ok":true,"version":"0.2.0","auth":"tailnet"}
 tailminal exec laptop -- uname -a    # or: ver / systeminfo on Windows
 ```
 
@@ -98,22 +99,22 @@ tailminal exec <host> [opts] -- <cmd...> One-shot command; streams output; exits
 tailminal attach <host> [session-id]     Interactive PTY over local stdin/stdout
                                          Ctrl+] = detach locally, session stays alive remotely
 tailminal sessions <host>                List sessions on <host>
-tailminal token                          Print the local node token
+tailminal token                          Print the token when using auth: "token"
 ```
 
 `<host>` accepts a MagicDNS name, an IP, a peer name from config, or a full URL (`http://host:7601`).
 
 ## HTTP API
 
-Base URL: `http://<node>:7601`. All `/api` routes except `/api/health` require `Authorization: Bearer <token>`.
+Base URL: `http://<node>:7601`. In the default `tailnet` mode, API and WebSocket requests from loopback (`127.0.0.0/8`, `::1`) and Tailscale (`100.64.0.0/10`, `fd7a:115c:a1e0::/48`) source addresses need no credential. Other addresses receive HTTP 403. In opt-in `token` mode, HTTP requests use `Authorization: Bearer <token>` and WebSockets use `?token=<token>`.
 
 | Endpoint | Method | Description |
 | --- | --- | --- |
-| `/api/health` | GET | Liveness probe. No auth. Returns `{ok, version}`. |
+| `/api/health` | GET | Liveness probe. Always open. Returns `{ok, version, auth}`. |
 | `/api/hosts` | GET | `{self: HostInfo, peers: [{name, address}]}` |
 | `/api/exec` | POST | One-shot command. Body: `{"cmd": string, "cwd"?: string, "env"?: object, "shell"?: "auto"\|"powershell"\|"cmd"\|"sh", "timeoutMs"?: number}`. Response is NDJSON stream: zero or more `{"stream":"stdout"\|"stderr","data":string}` chunks, then a final `{"exitCode":number\|null,"durationMs":number}`. |
 | `/api/sessions` | GET | `{sessions: [{id, shell, cols, rows, attached, createdAt, lastActivityAt}]}` |
-| `/api/session` | GET (WebSocket upgrade) | PTY session. Token passed as `?token=` query param (browsers cannot set WS headers). |
+| `/api/session` | GET (WebSocket upgrade) | PTY session. No query credential in tailnet mode; token mode uses `?token=`. |
 
 ### WebSocket protocol (`/api/session`)
 
@@ -166,7 +167,7 @@ tailminal attach laptop
 ```ts
 import { TailminalClient } from '@tailminal/client'
 
-const client = new TailminalClient('http://laptop:7601', token)
+const client = new TailminalClient('http://laptop:7601')
 
 const end = await client.exec(
   { cmd: 'adb devices', shell: 'auto' },
@@ -183,11 +184,12 @@ sock.write('echo hi\r')
 
 - Prefer one-shot `exec` with `timeoutMs` over long-lived sessions.
 - Exit code `null` means the process was killed (timeout) or failed to spawn.
-- Tokens grant full shell access to the node — never exfiltrate or log them; keep them inside the tailnet.
+- Tailminal grants a full shell. Keep Tailscale ACLs narrow and only run it on devices in a trusted tailnet.
 
 ## Troubleshooting
 
-- **401 responses** — token missing/mismatched. Check `~/.tailminal/token` on the target node vs. what the client sends (`TAILMINAL_TOKEN` or local token file).
+- **403 responses** — the connection did not arrive from loopback or a Tailscale address. Use the target's MagicDNS name/Tailscale IP, or deliberately switch the target to token mode for a proxied setup.
+- **401 responses in token mode** — token missing/mismatched. Check `~/.tailminal/token` on the target node vs. `TAILMINAL_TOKEN` or the local token file.
 - **Host offline in `tailminal hosts`** — node not running, wrong port, or MagicDNS name wrong. Verify with `curl http://<host>:7601/api/health`.
 - **`shell 'sh' is not available on Windows`** (and vice versa) — shell prefs are platform-specific; use `auto` unless you need a specific shell.
 - **Session not found on reattach** — the node restarted (sessions are in-memory) or the TTL reaper removed it.

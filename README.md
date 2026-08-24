@@ -24,7 +24,7 @@ No central hub. Discovery via MagicDNS.
 - **Agent-friendly CLI** — `tailminal exec` / `tailminal attach` are plain stdin/stdout subprocesses any agent framework can spawn
 - **Web UI on every node** — host list, live xterm.js terminal, one-shot command form
 - **Cross-platform** — Windows (PowerShell/CMD), macOS (zsh), Linux (bash/sh)
-- **Secure by default** — tailnet privacy + per-node bearer token
+- **Zero-setup tailnet access** — Tailscale and loopback clients connect without another credential
 
 ## Install
 
@@ -39,7 +39,7 @@ git clone https://github.com/TheReal-Flo/tailminal
 cd tailminal && pnpm install && pnpm build
 ```
 
-Start the node server (generates `~/.tailminal/token` and `~/.tailminal/config.json` on first run):
+Start the node server (generates `~/.tailminal/config.json` on first run):
 
 ```bash
 tailminal serve        # listens on 0.0.0.0:7601
@@ -50,6 +50,7 @@ tailminal serve        # listens on 0.0.0.0:7601
 ```json
 {
   "port": 7601,
+  "auth": "tailnet",
   "sessionTTL": "persistent",
   "peers": [
     { "name": "laptop", "address": "laptop.your-tailnet.ts.net" }
@@ -60,12 +61,16 @@ tailminal serve        # listens on 0.0.0.0:7601
 | Key          | Default       | Meaning                                                        |
 | ------------ | ------------- | -------------------------------------------------------------- |
 | `port`       | `7601`        | Fixed listen port for all nodes                                |
+| `auth`       | `tailnet`     | Passwordless access from loopback/Tailscale addresses; use `token` for legacy bearer auth |
 | `sessionTTL` | `persistent`  | Sessions live until reboot; or auto-reap detached ones (`30m`, `12h`, `7d`, …) |
 | `shell`      | platform default | Override the PTY login shell executable                     |
 | `peers`      | `[]`          | MagicDNS hostnames shown in the host list                      |
 
-The node token lives at `~/.tailminal/token`. Copy it to devices you want to
-connect from (or set `TAILMINAL_TOKEN`).
+With the default `"auth": "tailnet"`, no token setup is needed. Requests from
+LAN and public addresses are rejected even though the server listens on all
+interfaces. To opt into the old credential flow, set `"auth": "token"`; the
+server then creates `~/.tailminal/token`, and clients can use that file or
+`TAILMINAL_TOKEN`.
 
 ## CLI
 
@@ -78,7 +83,7 @@ tailminal exec <host> [opts] -- <cmd...> One-shot command (streams output, propa
     --timeout-ms <n>                     Kill after n ms
 tailminal attach <host> [session-id]     Interactive PTY over stdio (Ctrl+] detaches, session stays alive)
 tailminal sessions <host>                List remote sessions
-tailminal token                          Print the local node token
+tailminal token                          Print the token when using auth: "token"
 ```
 
 Hosts can be MagicDNS names (`laptop`), full URLs (`http://laptop:7601`), or
@@ -95,8 +100,8 @@ tailminal attach laptop                        # raw bidirectional shell on stdi
 
 ### Web UI
 
-Open `http://<node>:7601` in a browser, paste the node token once (stored in
-localStorage), pick a host, and get a live terminal.
+Open `http://<node>:7601` over Tailscale, pick a host, and get a live terminal.
+No credential prompt appears in the default tailnet mode.
 
 ## Autostart
 
